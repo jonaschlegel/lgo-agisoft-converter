@@ -2,6 +2,7 @@
   "name": "lgo-agisoft-converter",
   "version": "1.0.0",
   "main": "index.js",
+  "bin": "index.js",
   "repository": "https://github.com/jonaschlegel/lgo-agisoft-converter.git",
   "author": "Jona Schlegel <jona.schlegel@gmail.com>",
   "license": "MIT",

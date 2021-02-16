@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 // read through all the files in the in folder
 const fs = require('fs');
 // const csv = require('csv');
