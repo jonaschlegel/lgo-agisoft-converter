@@ -3,10 +3,26 @@
 // read through all the files in the in folder
 const fs = require('fs');
 // const csv = require('csv');
-const csv = require('csv/lib/sync');
+const parse = require('csv-parse/lib/sync');
+const stringify = require('csv-stringify/lib/sync');
 // const data = [];
 // TODO accept date from argv
 const year = process.argv[2];
+
+/** @typedef {{
+  PointID: string,
+  PointCode: string,
+  SUID: string,
+  FID: string,
+  PPID: string,
+  xPos: string,
+  yPos: string,
+  zHeight: string,
+  PrismType: string,
+  PrismHeight: string,
+  Date: string,
+  Time: string,
+}} Row */
 
 if (!year) {
   console.error(`No year provided! Please specify year as follows:
@@ -16,11 +32,12 @@ node index.js 2021`);
 }
 
 fs.readdirSync('in', 'utf8').forEach((file) => {
+  if (file === '.gitkeep') return;
   const fileContent = fs.readFileSync('in/' + file, 'utf8');
   const date = file.match(/(\d{4})\.txt/)?.[1];
   if (!date) {
     console.warn(
-      `No date found in filename "in/${file}" (attempt to find last four numbers before file extension failed)! Skipped file.`,
+      `No date found in filename "in/${file}" (attempt to find last four numbers before file extension failed)! Skipped file.`
     );
     return;
   }
@@ -29,25 +46,29 @@ fs.readdirSync('in', 'utf8').forEach((file) => {
   //   {
   //     PointID: '2003484',
   //     PointCode: 'PP',
-  //     'SE-Nr': '065_243',
-  //     Att2: '2',
-  //     Att3: 'BS_IF',
-  //     Easting: '17437.8715724798',
-  //     Northing: '389942.9379840849',
-  //     OrthoHeight: '297.9981262636',
+  //     SUID: '065_243',
+  //     FID: '2',
+  //     PPID: 'BS_IF',
+  //     xPos: '17437.8715724798',
+  //     yPos: '389942.9379840849',
+  //     zHeight: '297.9981262636',
+  //     PrismType: 'Ref',
   //     PrismHeight: '1.299',
+  //     Date: '1999-3-1',
+  //     Time: '18:59:12.3'
   //   },
   // ]
-  const rows = csv.parse(fileContent, {
+  /** @type Row[] */
+  const rows = parse(fileContent, {
     columns: true,
     ltrim: true,
     skip_empty_lines: true,
     delimiter: '\t',
   });
 
-  // filter the rows to only include rows with PP in the PointCode field
+  // filter the rows to only include rows with PAP in the PointCode field
   const passPointsRows = rows.filter((row) => {
-    if (row.PointCode === 'PP') {
+    if (row.PointCode === 'PAP') {
       return true;
     } else {
       return false;
@@ -57,7 +78,7 @@ fs.readdirSync('in', 'utf8').forEach((file) => {
   // group the rows by those having identical SE numbers
 
   const passPointsRowsGroups = passPointsRows.reduce((groups, row) => {
-    const groupKey = 'SE' + row['SE-Nr'] + '-' + row.Att3;
+    const groupKey = 'SE' + row.SUID + '-' + row.PPID;
     if (!groups[groupKey]) {
       groups[groupKey] = [];
     }
@@ -67,22 +88,22 @@ fs.readdirSync('in', 'utf8').forEach((file) => {
     // .3 Northing is added to the third column
     // .4 OrthoHeight is added to the fourth column
     groups[groupKey].push({
-      Att2: 'target ' + row.Att2,
-      Easting: row.Easting,
-      Northing: row.Northing,
-      OrthoHeight: row.OrthoHeight,
+      Att2: 'target ' + row.FID,
+      Easting: row.xPos,
+      Northing: row.yPos,
+      OrthoHeight: row.zHeight,
     });
     return groups;
-  }, {});
+  }, /** @type {{ [key: string]: {Att2: string, Easting: string, Northing: string, OrthoHeight: string}[] }} */ ({}));
   // the file name is generated as follows, with "-" separating the parts:
   // .1 the last 4 numbers from the "in" file are added as the first part
   // .2 PointCode is added as the second part
   // .3 SE-Nr is added with "SE" prefix
   // .4 Att3 is added as the fourth part
-  Object.entries(passPointsRowsGroups).forEach(([seNrAndAtt3, group]) => {
+  Object.entries(passPointsRowsGroups).forEach(([suIdAndFid, group]) => {
     fs.writeFileSync(
-      'out/' + year + date + '_PP_' + seNrAndAtt3 + '.txt',
-      csv.stringify(group),
+      'out/' + year + date + '_PP_' + suIdAndFid + '.txt',
+      stringify(group)
     );
   });
   // data.push(passPointsRowsGroups);
