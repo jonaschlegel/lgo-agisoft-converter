@@ -6,8 +6,6 @@ const fs = require('fs');
 const parse = require('csv-parse/lib/sync');
 const stringify = require('csv-stringify/lib/sync');
 // const data = [];
-// TODO accept date from argv
-const year = process.argv[2];
 
 /** @typedef {{
   PointID: string,
@@ -24,20 +22,13 @@ const year = process.argv[2];
   Time: string,
 }} Row */
 
-if (!year) {
-  console.error(`No year provided! Please specify year as follows:
-
-node index.js 2021`);
-  process.exit(1);
-}
-
 fs.readdirSync('in', 'utf8').forEach((file) => {
   if (file === '.gitkeep') return;
   const fileContent = fs.readFileSync('in/' + file, 'utf8');
-  const date = file.match(/(\d{4})\.txt/)?.[1];
+  const date = file.match(/(\d{8})\.txt/)?.[1];
   if (!date) {
     console.warn(
-      `No date found in filename "in/${file}" (attempt to find last four numbers before file extension failed)! Skipped file.`
+      `No date found in filename "in/${file}" (attempt to find last eight numbers before file extension failed)! Skipped file.`
     );
     return;
   }
@@ -96,17 +87,14 @@ fs.readdirSync('in', 'utf8').forEach((file) => {
     return groups;
   }, /** @type {{ [key: string]: {Att2: string, Easting: string, Northing: string, OrthoHeight: string}[] }} */ ({}));
   // the file name is generated as follows, with "-" separating the parts:
-  // .1 the last 4 numbers from the "in" file are added as the first part
+  // .1 the last 8 numbers from the "in" file are added as the first part
   // .2 PointCode is added as the second part
   // .3 SE-Nr is added with "SE" prefix
   // .4 Att3 is added as the fourth part
   Object.entries(passPointsRowsGroups).forEach(([suIdAndFid, group]) => {
-    fs.writeFileSync(
-      'out/' + year + date + '_PP_' + suIdAndFid + '.txt',
-      stringify(group)
-    );
+    const filePath = 'out/' + date + '_PP_' + suIdAndFid + '.txt';
+    fs.writeFileSync(filePath, stringify(group));
+    console.log(`Successfully created ${filePath}`);
   });
   // data.push(passPointsRowsGroups);
 });
-
-// console.log(data);
